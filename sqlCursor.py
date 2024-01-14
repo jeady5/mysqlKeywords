@@ -71,12 +71,15 @@ class SqlCursor:
         connection = self.connection()
         if connection:
             with connection.cursor() as cursor:
-                cursor.execute(sql, (keyword, response))
-                connection.commit()
-                logger.info("[MysqlKeyword Cursor] insert success")
-                return True
+                if not self.checkKeyExist(keyword):
+                    cursor.execute(sql, (keyword, response))
+                    connection.commit()
+                    logger.info("[MysqlKeyword Cursor] insert success")
+                    return True
+                else:
+                    return f"关键词{keyword}已存在"
         else:
-            return False
+            return "操作失败"
       
     # 更新关键词状态
     def set_key_state(self, keyword, response=None, state="active"):
@@ -85,9 +88,9 @@ class SqlCursor:
         logger.debug(f"[MysqlKeyword Cursor] update_data {keyword}, {state}")
         connection = self.connection()
         if response is None:
-            sql = f"UPDATE {self.tbName} set state='%s' where keyword='%s'"
+            sql = f"UPDATE {self.tbName} set state=%s where keyword=%s"
         else:
-            sql = f"UPDATE {self.tbName} set state='%s' where keyword='%s' and response='%s'"
+            sql = f"UPDATE {self.tbName} set state=%s where keyword=%s and response=%s"
         if connection:
             with connection.cursor() as cursor:
                 if response is None:
@@ -105,11 +108,11 @@ class SqlCursor:
         if not self.validInput(keyword, newResponse):
             return False
         logger.debug(f"[MysqlKeyword Cursor] update_data {keyword}, {newResponse}")
-        sql = f"UPDATE {self.tbName} set response='%s' where keyword='%s'"
+        sql = f"UPDATE {self.tbName} set response=%s where keyword=%s"
         connection = self.connection()
         if connection:
             with connection.cursor() as cursor:
-                res = cursor.execute(sql, (keyword, newResponse))
+                res = cursor.execute(sql, (newResponse, keyword))
                 connection.commit()
                 logger.info(f"[MysqlKeyword Cursor] update success {res}")
                 return res
@@ -121,13 +124,15 @@ class SqlCursor:
         if not self.validInput(keyword):
             return False
         logger.debug(f"[MysqlKeyword Cursor] require_data {keyword}")
-        sql = f"INSERT INTO {self.tbName} (keyword, state) VALUES (%s, %s)"
+
         connection = self.connection()
         if connection:
             with connection.cursor() as cursor:
-                cursor.execute(sql, (keyword, "require"))
-                connection.commit()
-                logger.info("[MysqlKeyword Cursor] insert success")
+                if not self.checkKeyExist(keyword):
+                    sql = f"INSERT INTO {self.tbName} (keyword, state) VALUES (%s, %s)"
+                    cursor.execute(sql, (keyword, "require"))
+                    connection.commit()
+                    logger.info("[MysqlKeyword Cursor] insert success")
                 return True
         else:
             return False
@@ -137,7 +142,7 @@ class SqlCursor:
         if not self.validInput(keyword):
             return False
         logger.debug(f"[MysqlKeyword Cursor] remove_data_all {keyword}")
-        sql = f"DELETE FROM {self.tbName} where keyword='%s'"
+        sql = f"DELETE FROM {self.tbName} where keyword=%s"
         connection = self.connection()
         if connection:
             with connection.cursor() as cursor:
@@ -153,7 +158,7 @@ class SqlCursor:
         if not self.validInput(keyword):
             return False
         logger.debug(f"[MysqlKeyword Cursor] remove_key {keyword}")
-        sql = f"DELETE FROM {self.tbName} where keyword='%s'"
+        sql = f"DELETE FROM {self.tbName} where keyword=%s"
         connection = self.connection()
         if connection:
             with connection.cursor() as cursor:
@@ -172,7 +177,7 @@ class SqlCursor:
         if not self.validInput(keyword, response):
             return False
         logger.debug(f"[MysqlKeyword Cursor] remove_key_value {keyword}, {response}")
-        sql = f"DELETE FROM {self.tbName} where keyword='%s' and response='%s'"
+        sql = f"DELETE FROM {self.tbName} where keyword=%s and response=%s"
         connection = self.connection()
         if connection:
             with connection.cursor() as cursor:
@@ -201,7 +206,7 @@ class SqlCursor:
     # 查询全部键
     def query_keys(self):
         logger.debug("[MysqlKeyword Cursor] query_keys")
-        sql = f"SELECT keyword FROM {self.tbName} where state='active'"
+        sql = f"SELECT keyword, id FROM {self.tbName} where state='active'"
         connection = self.connection()
         if connection:
             with connection.cursor() as cursor:
@@ -212,7 +217,7 @@ class SqlCursor:
     # 查询全部需求键值
     def query_requirements(self):
         logger.debug("[MysqlKeyword Cursor] query_keys")
-        sql = f"SELECT keyword FROM {self.tbName} where state='require'"
+        sql = f"SELECT keyword, id FROM {self.tbName} where state='require'"
         connection = self.connection()
         if connection:
             with connection.cursor() as cursor:
@@ -229,14 +234,22 @@ class SqlCursor:
         connection = self.connection()
         if connection:
             with connection.cursor() as cursor:
-                cursor.execute(sql, (f"%{keyword}%"))  # 这里将like_key作为参数传递，避免SQL注入攻击
+                cursor.execute(sql, (f"%{keyword}%"))
                 result = cursor.fetchall()
                 if result:
                     return result  # 返回匹配的response值
                 else:
                     return None  # 如果没有匹配的记录，返回None
 
-
+    def checkKeyExist(self, key)->bool:
+        query = f"SELECT * FROM {self.tbName} WHERE keyword = %s"
+        connection = self.connection()
+        if connection:
+            with connection.cursor() as cursor:
+                res = cursor.execute(query, (key))
+                return res != 0
+        else:
+            return False
     # 连接数据库并检查数据表是否存在
     def checkDBTB(self):
         if self.create_database():

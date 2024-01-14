@@ -57,12 +57,12 @@ class MysqlKeywords(Plugin):
                 if keys is not None:
                     keywords = []
                     for info in keys:
-                        keywords.append(f"* {info[0]}")
+                        keywords.append(f"{info[1]}".rjust(4) + f"> {info[0]}")
                     if len(keywords) == 0:
                         keywords.append('空列表')
                     else:
                         keywords.append(f"\n没有想要的？\n发送'{self.includePrefix}我想要xxx'提交需求.")
-                    reply.content = f"# 已知的关键词列表:\n{'\n'.join(keywords)}"
+                    reply.content = f">>>已知的关键词列表<<<\n{'\n'.join(keywords)}"
                     e_context["reply"] = reply
                     e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
                     return
@@ -102,10 +102,11 @@ class MysqlKeywords(Plugin):
                 if len(contents)>=3:
                     key = contents[1]
                     response = ' '.join(contents[2:])
-                    if self.sql.insert_data(key, response):
+                    res = self.sql.insert_data(key, response)
+                    if res is True:
                         reply.content = f"关键词回复添加成功. \n你可以发送'{self.includePrefix}{key}'获取回复信息"
                     else:
-                        reply.content = "关键词添加失败."
+                        reply.content = f"添加失败. {res}"
                 else:
                     reply.content = "参数不足."
                 e_context["reply"] = reply
