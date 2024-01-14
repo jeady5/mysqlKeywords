@@ -1,0 +1,20 @@
+{
+  "mysql": {
+    "host": "localhost", 
+    "user": "root",
+    "passwd": "123456",
+    "dbName": "db_gpt",
+    "tbName": "tb_keywords",
+    "port": 3306
+  },
+  "includePrefix": "",
+  "excludePrefix": "",
+  "emptyForInclude": true,
+  "emptyForExclude": true,
+  "cmd": {
+    "keyList": "关键词列表",
+    "admin": "$管理命令",
+    "enableReply": "$启用全部回复",
+    "disableReply": "$禁用全部回复"
+  }
+}
