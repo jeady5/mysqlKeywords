@@ -230,11 +230,20 @@ class SqlCursor:
         if not self.validInput(keyword):
             return False
         logger.debug(f"[MysqlKeyword Cursor] search_data {keyword}")
-        sql = f"SELECT keyword,response FROM {self.tbName} WHERE keyword LIKE %s and state='active'"
+        try:
+            id = int(keyword)
+        except Exception as e:
+            id = None
+        print("after parse key ", id, keyword)
+        if id:
+            keyword = id
+            sql = f"SELECT keyword,response FROM {self.tbName} WHERE id=%s and state='active'"
+        else:
+            sql = f"SELECT keyword,response FROM {self.tbName} WHERE keyword LIKE %s and state='active'"
         connection = self.connection()
         if connection:
             with connection.cursor() as cursor:
-                cursor.execute(sql, (f"%{keyword}%"))
+                cursor.execute(sql, (f"%{keyword}%" if id is None else keyword))
                 result = cursor.fetchall()
                 if result:
                     return result  # 返回匹配的response值
