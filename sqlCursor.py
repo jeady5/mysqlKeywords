@@ -4,6 +4,9 @@ from common.log import logger
 
 class SqlCursor:
     def __init__(self, host:str="localhost", user:str="root", passwd:str="123456", dbName:str="db", tbName:str="tb", port=3306, config=None) -> None:
+        self.setConfig(host, user, passwd, dbName, tbName, port, config)
+
+    def setConfig(self, host:str="localhost", user:str="root", passwd:str="123456", dbName:str="db", tbName:str="tb", port=3306, config=None):
         self.host = config['host'] if config else host
         self.user = config['user'] if config else user
         self.passwd = config['passwd'] if config else passwd
@@ -234,7 +237,6 @@ class SqlCursor:
             id = int(keyword)
         except Exception as e:
             id = None
-        print("after parse key ", id, keyword)
         if id:
             keyword = id
             sql = f"SELECT keyword,response FROM {self.tbName} WHERE id=%s and state='active'"

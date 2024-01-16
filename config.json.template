@@ -15,6 +15,7 @@
     "keyList": "关键词列表",
     "admin": "$管理命令",
     "enableReply": "$启用全部回复",
-    "disableReply": "$禁用全部回复"
+    "disableReply": "$禁用全部回复",
+    "configMysql": "$config"
   }
 }
