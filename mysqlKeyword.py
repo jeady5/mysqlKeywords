@@ -1,6 +1,7 @@
 # encoding:utf-8
 
 import plugins
+import re
 from bridge.context import ContextType
 from bridge.reply import Reply, ReplyType
 from channel.chat_message import ChatMessage
@@ -42,8 +43,6 @@ class MysqlKeywords(Plugin):
         if e_context["context"].type not in [ContextType.TEXT]:
             return
         content = e_context["context"].content
-        reply = Reply()
-        reply.type = ReplyType.TEXT
         contentStriped:str = content.lstrip(self.includePrefix).lstrip()
         logger.debug(f"{self.tag} on_handle_context. contentStriped: %s" % contentStriped)
         if (len(self.includePrefix)==0 and self.emptyForInclude) or (len(self.includePrefix)>0 and content.startswith(self.includePrefix)):
@@ -96,8 +95,6 @@ class MysqlKeywords(Plugin):
     
     def handleKeyList(self, content, e_context):
         logger.debug(f'{self.tag} handleKeyList {content}')
-        reply = Reply()
-        reply.type = ReplyType.TEXT
         if content == self.cmd['keyList']:
             keys = self.sql.query_keys()
             if keys is not None:
@@ -108,27 +105,25 @@ class MysqlKeywords(Plugin):
                     keywords.append('空列表')
                 else:
                     keywords.append(f"\n没有想要的？\n发送'{self.includePrefix}我想要xxx'提交需求.")
-                reply.content = f">>>已知的关键词列表<<<\n{'\n'.join(keywords)}"
-                e_context["reply"] = reply
+                reply = f">>>已知的关键词列表<<<\n{'\n'.join(keywords)}"
+                e_context["reply"] = self.initReply(reply)
                 e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
                 return True
         return False
 
     def handleUserRequire(self, content, e_context):
         logger.debug(f'{self.tag} handleUserRequire {content}')
-        reply = Reply()
-        reply.type = ReplyType.TEXT
         if content.startswith(self.cmd['require']):
             contents = content.split(self.cmd['require'])
             if len(contents)>=2:
                 key = contents[1].strip()
                 if self.sql.require_data(key):
-                    reply.content = f"反馈'{key}'成功，请静待更新"
+                    reply = f"反馈'{key}'成功，请静待更新"
                 else:
-                    reply.content = "反馈失败."
+                    reply = "反馈失败."
             else:
-                reply.content = "参数不足."
-            e_context["reply"] = reply
+                reply = "参数不足."
+            e_context["reply"] = self.initReply(reply)
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
         else:
@@ -140,11 +135,9 @@ class MysqlKeywords(Plugin):
         if res:
             if len(res)>1:
                 result = '\n'.join([f"* {idx+1}->{resp[0]}:\n  \t{resp[1]}" for idx,resp in enumerate(res)])
+                reply = self.initReply(result)
             else:
-                result = f"* {res[0][0]}:\n\t{res[0][1]}"
-            reply = Reply()
-            reply.type = ReplyType.TEXT
-            reply.content = result
+                reply = self.initReply(res[0][1], res[0][0])
             e_context["reply"] = reply
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
@@ -153,8 +146,6 @@ class MysqlKeywords(Plugin):
 
     def handleRequireList(self, content, e_context):
         logger.debug(f'{self.tag} handleRequireList {content}')
-        reply = Reply()
-        reply.type = ReplyType.TEXT
         if content == self.cmd['requireList']:
             requirements = self.sql.query_requirements()
             reqs = []
@@ -163,34 +154,31 @@ class MysqlKeywords(Plugin):
                     reqs.append(f"* {req[0]}")
             if len(reqs) == 0:
                 reqs.append('没有新需求')
-            reply.content = f"# 全部需求列表:\n{'\n'.join(reqs)}"
-            e_context["reply"] = reply
+            e_context["reply"] = self.initReply(f"# 全部需求列表:\n{'\n'.join(reqs)}")
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
         return False
 
     def handleKeyState(self, content, e_context):
         logger.debug(f'{self.tag} handleKeyState {content}')
-        reply = Reply()
-        reply.type = ReplyType.TEXT
         if content.startswith(self.cmd['enable']):
             contents = content.split(' ')
             if len(contents)==2:
                 key = contents[1]
                 if self.sql.set_key_state(key, state="active"):
-                    reply.content = f"关键词'{key}'回复已启用."
+                    reply = f"关键词'{key}'回复已启用."
                 else:
-                    reply.content = "关键词状态更新失败."
+                    reply = "关键词状态更新失败."
             elif len(contents)>=3:
                 key = contents[1]
                 response = ' '.join(contents[2:])
                 if self.sql.set_key_state(key, response, "active"):
-                    reply.content = f"关键词'{key}'回复已启用."
+                    reply = f"关键词'{key}'回复已启用."
                 else:
-                    reply.content = "关键词状态更新失败."
+                    reply = "关键词状态更新失败."
             else:
-                reply.content = "参数不足."
-            e_context["reply"] = reply
+                reply = "参数不足."
+            e_context["reply"] = self.initReply(reply)
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
         elif content.startswith(self.cmd['disable']):
@@ -218,8 +206,6 @@ class MysqlKeywords(Plugin):
     
     def handleAddCmd(self, content, e_context):
         logger.debug(f'{self.tag} handleAddCmd {content}')
-        reply = Reply()
-        reply.type = ReplyType.TEXT
         if content.startswith(self.cmd['add']):
             contents = content.split(' ')
             if len(contents)>=3:
@@ -227,20 +213,18 @@ class MysqlKeywords(Plugin):
                 response = ' '.join(contents[2:])
                 res = self.sql.insert_data(key, response)
                 if res is True:
-                    reply.content = f"关键词回复添加成功. \n你可以发送'{self.includePrefix}{key}'获取回复信息"
+                    reply = f"关键词回复添加成功. \n你可以发送'{self.includePrefix}{key}'获取回复信息"
                 else:
-                    reply.content = f"添加失败. {res}"
+                    reply = f"添加失败. {res}"
             else:
-                reply.content = "参数不足."
-            e_context["reply"] = reply
+                reply = "参数不足."
+            e_context["reply"] = self.initReply(reply)
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
         return False
         
     def handleRemoveCmd(self, content, e_context):
         logger.debug(f'{self.tag} handleRemoveCmd {content}')
-        reply = Reply()
-        reply.type = ReplyType.TEXT
         if content.startswith(self.cmd['remove']):
             contents = content.split(' ')
             if len(contents)==2:
@@ -248,40 +232,38 @@ class MysqlKeywords(Plugin):
                 if key.endswith("*"):
                     result = self.sql.remove_data_all(key.rstrip('*'))
                     if result>=1:
-                        reply.content = f"关键词'{key}'的{result}条回复已移除"
+                        reply = f"关键词'{key}'的{result}条回复已移除"
                     else:
-                        reply.content = "关键词移除失败."
+                        reply = "关键词移除失败."
                 else:
                     result = self.sql.remove_key(key)
                     if result == 1:
-                        reply.content = f"关键词'{key}'回复已移除"
+                        reply = f"关键词'{key}'回复已移除"
                     elif result > 1:
-                        reply.content = '\n'.join([
+                        reply = '\n'.join([
                                 f"移除失败，有{result}个相同的关键词.",
                                 f"使用'{self.cmd['remove']} {key}*'删除{result}条回复",
                                 f"使用'{self.cmd['remove']} {key} 回复值'删除指定回复"
                             ])
                     else:
-                        reply.content = "关键词移除失败."
+                        reply = "关键词移除失败."
             elif len(contents)>=3:
                 key = contents[1]
                 response = ''.join(contents[2:])
                 result = self.sql.remove_key_value(key, response)
                 if result>0:
-                    reply.content = f"关键词'{key}'回复'{response}'已移除."
+                    reply = f"关键词'{key}'回复'{response}'已移除."
                 else:
-                    reply.content = "关键词移除失败."
+                    reply = "关键词移除失败."
             else:
-                reply.content = "参数不足."
-            e_context["reply"] = reply
+                reply = "参数不足."
+            e_context["reply"] = self.initReply(reply)
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
         return False
         
     def handleUpdateCmd(self, content, e_context):
         logger.debug(f'{self.tag} handleUpdateCmd {content}')
-        reply = Reply()
-        reply.type = ReplyType.TEXT
         if content.startswith(self.cmd['update']):
             contents = content.split(' ')
             if len(contents)>=3:
@@ -289,12 +271,12 @@ class MysqlKeywords(Plugin):
                 response = ' '.join(contents[2:])
                 res = self.sql.update_data(key, response)
                 if res:
-                    reply.content = f"关键词'{key}'回复已更新"
+                    reply = f"关键词'{key}'回复已更新"
                 else:
-                    reply.content = f"关键词更新失败.{res}"
+                    reply = f"关键词更新失败.{res}"
             else:
-                reply.content = "参数不足."
-            e_context["reply"] = reply
+                reply = "参数不足."
+            e_context["reply"] = self.initReply(reply)
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
         return False
@@ -302,10 +284,7 @@ class MysqlKeywords(Plugin):
     def handleExclude(self, content: str, e_context, replyText):
         logger.debug(f'{self.tag} handleExclude {content}')
         if (len(self.excludePrefix)==0 and not self.emptyForExclude) or (len(self.excludePrefix)>0 and not content.startswith(self.excludePrefix)):
-            reply = Reply()
-            reply.type = ReplyType.TEXT
-            reply.content = replyText
-            e_context["reply"] = reply
+            e_context["reply"] = self.initReply(replyText)
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
         return False
@@ -324,49 +303,50 @@ class MysqlKeywords(Plugin):
 
             self.sql.setConfig(config=newConfig)
             success = self.sql.checkDBTB()
-            
-            reply = Reply()
-            reply.type = ReplyType.TEXT
             if success:
                 self.config['mysql'] = newConfig
                 enableTip = f"\n\n使用命令 `{self.includePrefix} {self.cmd['enableReply']}` 开启关键词回复."
-                reply.content = f"mysql配置已更新。" + (enableTip if self.disableThis else "")
+                reply = f"mysql配置已更新。" + (enableTip if self.disableThis else "")
                 super().save_config(self.config)
             else:
                 self.sql.setConfig(config=self.config['mysql'])
-                reply.content = "新配置无效，未更新."
-            e_context["reply"] = reply
+                reply = "新配置无效，未更新."
+            e_context["reply"] = self.initReply(reply)
             e_context.action = EventAction.BREAK_PASS
             return True
     
     def handleAdminCmdReply(self, content, e_context):
         logger.debug(f'{self.tag} handleAdminCmdReply {content}')
         if content == self.cmd['admin']:
-            reply = Reply()
-            reply.type = ReplyType.TEXT
-            reply.content = f">>>全部指令列表<<<\n{''.join([f'* {cmd} \n' for cmd in self.cmd.values()])}"
-            e_context["reply"] = reply
+            e_context["reply"] = self.initReply(f">>>全部指令列表<<<\n{''.join([f'* {cmd} \n' for cmd in self.cmd.values()])}")
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
         return False
         
     def handleGlobalEnable(self, content, e_context)->bool:
         logger.debug(f'{self.tag} handleGlobalEnable {content}')
-        reply = Reply()
-        reply.type = ReplyType.TEXT
         if content == self.cmd['enableReply']:
             self.disableThis = False
-            reply.content = "回复功能已启用.\n\n" + self.helpText
-            e_context["reply"] = reply
+            e_context["reply"] = self.initReply("回复功能已启用.\n\n" + self.helpText)
             e_context.action = EventAction.BREAK_PASS
             return True
         elif content == self.cmd['disableReply']:
             self.disableThis = True
-            reply.content = "回复功能已禁用."
-            e_context["reply"] = reply
+            e_context["reply"] = self.initReply("回复功能已禁用.")
             e_context.action = EventAction.BREAK_PASS
             return True
         return False
+
+    def initReply(self, content: str, key: str="", type:ReplyType=ReplyType.TEXT):
+        if re.match("^http.*\.(?:gif|jpg|jpeg|bmp|png)$", content):
+            type = ReplyType.IMAGE_URL
+        elif re.match("^.*\.(?:gif|jpg|jpeg|bmp|png)$", content):
+            if os.path.isfile(content):
+                content = open(content, 'rb')
+                type = ReplyType.IMAGE
+        if type == ReplyType.TEXT:
+            content = ("" if len(key.strip())==0 else f"* {key}:\n\t") + content
+        return Reply(type, content)
 
     def initConfig(self)->bool:
         curDir = os.path.dirname(__file__)
