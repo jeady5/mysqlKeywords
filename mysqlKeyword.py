@@ -186,19 +186,19 @@ class MysqlKeywords(Plugin):
             if len(contents)==2:
                 key = contents[1]
                 if self.sql.set_key_state(key, state="deactive"):
-                    reply.content = f"关键词'{key}'回复已禁用."
+                    reply = f"关键词'{key}'回复已禁用."
                 else:
-                    reply.content = "关键词状态禁用失败."
+                    reply = "关键词状态禁用失败."
             elif len(contents)>=3:
                 key = contents[1]
                 response = ' '.join(contents[2:])
                 if self.sql.set_key_state(key, response, "deactive"):
-                    reply.content = f"关键词'{key}'回复{response}已禁用."
+                    reply = f"关键词'{key}'回复{response}已禁用."
                 else:
-                    reply.content = "关键词状态禁用失败."
+                    reply = "关键词状态禁用失败."
             else:
-                reply.content = "参数不足."
-            e_context["reply"] = reply
+                reply = "参数不足."
+            e_context["reply"] = self.initReply(reply)
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
         else:
@@ -344,6 +344,9 @@ class MysqlKeywords(Plugin):
             if os.path.isfile(content):
                 content = open(content, 'rb')
                 type = ReplyType.IMAGE
+        elif re.match("^.*\.(?:mp3|wav)$", content):
+            type = ReplyType.VOICE
+            pass
         if type == ReplyType.TEXT:
             content = ("" if len(key.strip())==0 else f"* {key}:\n\t") + content
         return Reply(type, content)
