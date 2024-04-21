@@ -239,9 +239,9 @@ class SqlCursor:
             id = None
         if id:
             keyword = id
-            sql = f"SELECT keyword,response FROM {self.tbName} WHERE id=%s and state='active'"
+            sql = f"SELECT keyword,response FROM {self.tbName} WHERE id=%s and state!='deactive'"
         else:
-            sql = f"SELECT keyword,response FROM {self.tbName} WHERE keyword LIKE %s and state='active'"
+            sql = f"SELECT keyword,response FROM {self.tbName} WHERE keyword LIKE %s and state!='deactive'"
         connection = self.connection()
         if connection:
             with connection.cursor() as cursor:

@@ -142,7 +142,8 @@ class MysqlKeywords(Plugin):
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
         else:
-            return self.handleExclude(content, e_context, f"关键词查询为空\n\n你可以发送'{self.includePrefix}我想要{content}'进行反馈，然后关注后续公众号推文.")
+            autoKeylist = f'<a href="weixin://bizmsgmenu?msgmenuid=1&msgmenucontent={self.includePrefix} {self.cmd['keyList']}">获取关键词列表</a>'
+            return self.handleExclude(content, e_context, f">>>关键词查询为空<<<\n\n1.你可以发送 '{self.includePrefix}我想要{content}' 进行反馈，然后关注后续公众号推文.\n2. 输入 '{self.includePrefix} {self.cmd['keyList']}' {autoKeylist}\n3. 输入 '{self.excludePrefix} 你想问的问题' 和gpt对话")
 
     def handleRequireList(self, content, e_context):
         logger.debug(f'{self.tag} handleRequireList {content}')
@@ -175,7 +176,7 @@ class MysqlKeywords(Plugin):
                 if self.sql.set_key_state(key, response, "active"):
                     reply = f"关键词'{key}'回复已启用."
                 else:
-                    reply = "关键词状态更新失败."
+                    reply = "关键词(回复)状态更新失败."
             else:
                 reply = "参数不足."
             e_context["reply"] = self.initReply(reply)
@@ -195,7 +196,27 @@ class MysqlKeywords(Plugin):
                 if self.sql.set_key_state(key, response, "deactive"):
                     reply = f"关键词'{key}'回复{response}已禁用."
                 else:
-                    reply = "关键词状态禁用失败."
+                    reply = "关键词(回复)状态禁用失败."
+            else:
+                reply = "参数不足."
+            e_context["reply"] = self.initReply(reply)
+            e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
+            return True
+        elif content.startswith(self.cmd['private']):
+            contents = content.split(' ')
+            if len(contents)==2:
+                key = contents[1]
+                if self.sql.set_key_state(key, state="private"):
+                    reply = f"关键词'{key}'已设置私密，不再出现在关键词列表中，但可以响应关键词回复."
+                else:
+                    reply = "关键词状态私密失败."
+            elif len(contents)>=3:
+                key = contents[1]
+                response = ' '.join(contents[2:])
+                if self.sql.set_key_state(key, response, "private"):
+                    reply = f"关键词'{key}'回复{response}已设置私密，不再出现在关键词列表中，但可以响应关键词回复."
+                else:
+                    reply = "关键词(回复)状态设置失败."
             else:
                 reply = "参数不足."
             e_context["reply"] = self.initReply(reply)
@@ -379,6 +400,7 @@ class MysqlKeywords(Plugin):
                 "remove": "$remove ", # includePrefix cmd key
                 "disable": "$disable ", # includePrefix cmd key
                 "enable": "$enable ", # includePrefix cmd key
+                "private": "$private ", # includePrefix cmd key
             }, **configCmd}
             self.includePrefix = self.config.get('includePrefix', "")
             self.excludePrefix = self.config.get('excludePrefix', "")
