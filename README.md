@@ -73,6 +73,7 @@ I-->Z
 | $update key newVaue             | 更新指定键的值                             |
 | $enable key                     | 启用指定回复                               |
 | $disable key                    | 禁用指定回复                               |
+| $private key                   | 不显示在关键词列表，但响应关键词回复        |
 | $启用全部回复                   | 启用该插件的回复功能                       |
 | $禁用全部回复                   | 禁用该插件的回复功能                       |
 | $config [dbName [user passwd]]] | 修改mysql的配置项；默认 db_gpt root 123456 |
