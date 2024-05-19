@@ -105,7 +105,8 @@ class MysqlKeywords(Plugin):
                     keywords.append('空列表')
                 else:
                     keywords.append(f"\n没有想要的？\n发送'{self.includePrefix}我想要xxx'提交需求.")
-                reply = f">>>已知的关键词列表<<<\n{'\n'.join(keywords)}"
+                keywordList = "\n".join(keywords)
+                reply = f">>>已知的关键词列表<<<\n{keywordList}"
                 e_context["reply"] = self.initReply(reply)
                 e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
                 return True
@@ -142,7 +143,8 @@ class MysqlKeywords(Plugin):
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
         else:
-            autoKeylist = f'<a href="weixin://bizmsgmenu?msgmenuid=1&msgmenucontent={self.includePrefix} {self.cmd['keyList']}">获取关键词列表</a>'
+            cmd = self.cmd['keyList']
+            autoKeylist = f'<a href="weixin://bizmsgmenu?msgmenuid=1&msgmenucontent={self.includePrefix} {cmd}">获取关键词列表</a>'
             return self.handleExclude(content, e_context, f">>>关键词查询为空<<<\n\n1.你可以发送 '{self.includePrefix}我想要{content}' 进行反馈，然后关注后续公众号推文.\n2. 输入 '{self.includePrefix} {self.cmd['keyList']}' {autoKeylist}\n3. 输入 '{self.excludePrefix} 你想问的问题' 和gpt对话")
 
     def handleRequireList(self, content, e_context):
@@ -155,7 +157,8 @@ class MysqlKeywords(Plugin):
                     reqs.append(f"* {req[0]}")
             if len(reqs) == 0:
                 reqs.append('没有新需求')
-            e_context["reply"] = self.initReply(f"# 全部需求列表:\n{'\n'.join(reqs)}")
+            reqList = '\n'.join(reqs)
+            e_context["reply"] = self.initReply(f"# 全部需求列表:\n{reqList}")
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
         return False
@@ -339,7 +342,8 @@ class MysqlKeywords(Plugin):
     def handleAdminCmdReply(self, content, e_context):
         logger.debug(f'{self.tag} handleAdminCmdReply {content}')
         if content == self.cmd['admin']:
-            e_context["reply"] = self.initReply(f">>>全部指令列表<<<\n{''.join([f'* {cmd} \n' for cmd in self.cmd.values()])}")
+            cmdList = ''.join([f'* {cmd} \n' for cmd in self.cmd.values()])
+            e_context["reply"] = self.initReply(f">>>全部指令列表<<<\n{cmdList}")
             e_context.action = EventAction.BREAK_PASS  # 事件结束，并跳过处理context的默认逻辑
             return True
         return False
